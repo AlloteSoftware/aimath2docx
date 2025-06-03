@@ -8,10 +8,12 @@ setup(
         "python-docx",
         "latex2mathml",
         "lxml",
+        "customtkinter"
     ],
     entry_points={
         "console_scripts": [
-            "aimath2docx = aimath2docx:main"
+            "aimath2docx = aimath2docx:main",
+            "aimath2docx-gui = aimath2docx_gui:main"
         ]
     }
 )
