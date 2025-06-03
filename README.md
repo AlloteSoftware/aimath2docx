@@ -36,7 +36,6 @@ Features:
 - File picker for Markdown input
 - Output path selection with default filename
 - Clean centered layout with status message
-- Footer with clickable link to allote.software
 
 Run the GUI:
 
