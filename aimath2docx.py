@@ -878,7 +878,7 @@ def fix_inline_formula_spaces(text):
     return text
 
 
-if __name__ == "__main__":
+def main():
     if len(sys.argv) >= 2:
         input_file = sys.argv[1]
         if len(sys.argv) >= 3:
@@ -900,3 +900,6 @@ if __name__ == "__main__":
             sys.exit(1)
     else:
         print(f"python chat2docx.py input.txt output.docx")
+
+if __name__ == "__main__":
+    main()
