@@ -14,7 +14,7 @@ setup(
     entry_points={
         "console_scripts": [
             "aimath2docx = aimath2docx:main",
-            "aimath2docx-gui = aimath2docx_gui:main"
+            "aimath2docx-gui = aimath2docx-gui:main"
         ]
     }
 )
