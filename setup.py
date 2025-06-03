@@ -8,7 +8,8 @@ setup(
         "python-docx",
         "latex2mathml",
         "lxml",
-        "customtkinter"
+        "customtkinter",
+        "mathml2omml_as"
     ],
     entry_points={
         "console_scripts": [
