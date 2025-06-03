@@ -8,7 +8,6 @@ setup(
         "python-docx",
         "latex2mathml",
         "lxml",
-        "git+https://github.com/AlloteSoftware/mathml2omml_as.git"
     ],
     entry_points={
         "console_scripts": [
