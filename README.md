@@ -42,7 +42,7 @@ Features:
 
 Run the GUI:
 
-    python aimath2docx-gui.py
+    python aimath2docx-gui.pyw
 
 ## License
 
