@@ -13,8 +13,6 @@ To install the converter and GUI directly from GitHub:
     pip install git+https://github.com/AlloteSoftware/aimath2docx.git
 
 
-pip install -r requirements.txt
-
 ## Usage: Command-line tool (aimath2docx.py)
 
 This script converts a Markdown file with LaTeX formulas and tables into a Word (.docx) document using Python.
@@ -27,10 +25,10 @@ Features:
 
 Run from command line:
 
-    python aimath2docx.py input.md output.docx
+    aimath2docx input.md output.docx
 
 
-## Usage: GUI application (aimath2docx-gui.py)
+## Usage: GUI application (aimath2docx-gui)
 
 This is a graphical user interface for the converter built with customtkinter.
 
@@ -42,7 +40,7 @@ Features:
 
 Run the GUI:
 
-    python aimath2docx-gui.pyw
+    aimath2docx-gui
 
 ## License
 
