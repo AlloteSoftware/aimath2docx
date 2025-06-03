@@ -3,7 +3,7 @@ from setuptools import setup
 setup(
     name="aimath2docx",
     version="1.0",
-    py_modules=["aimath2docx"],
+    py_modules=["aimath2docx", "aimath2docx_gui"],
     install_requires=[
         "python-docx",
         "latex2mathml",

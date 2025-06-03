@@ -892,14 +892,14 @@ def main():
             md_text = replace_newlines_manual(md_text)
             ok = markdown_to_docx(md_text, output_file)
             if ok:
-                print(f"Готово! Откройте {output_file}")
+                print(f"Conversion complete.\nFile saved as: {output_file}")
             else:
-                print("Файл не сохранён.")
+                print("File is not saved.")
         except Exception as e:
-            print(f"[ОШИБКА] Не удалось открыть или прочитать файл '{input_file}': {e}")
+            print(f"[Error] Could not open or read the file: '{input_file}': {e}")
             sys.exit(1)
     else:
-        print(f"python chat2docx.py input.txt output.docx")
+        print(f"python aimath2docx.py input.txt output.docx")
 
 if __name__ == "__main__":
     main()
