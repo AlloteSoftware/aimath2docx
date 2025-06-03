@@ -899,7 +899,7 @@ def main():
             print(f"[Error] Could not open or read the file: '{input_file}': {e}")
             sys.exit(1)
     else:
-        print(f"python aimath2docx.py input.txt output.docx")
+        print(f"aimath2docx.py input.txt output.docx")
 
 if __name__ == "__main__":
     main()
