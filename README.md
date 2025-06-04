@@ -8,10 +8,13 @@ This tool was specifically designed for converting GPT (ChatGPT or other LLM) an
 
 ## Installation
 
+For the converter to work correctly, before installation you need to remove mathml2omml if it is installed:
+
+    pip uninstall mathml2omml
+
 To install the converter and GUI directly from GitHub:
 
     pip install git+https://github.com/AlloteSoftware/aimath2docx.git
-
 
 ## Usage: Command-line tool (aimath2docx.py)
 
@@ -26,7 +29,6 @@ Features:
 Run from command line:
 
     aimath2docx input.md output.docx
-
 
 ## Usage: GUI application (aimath2docx-gui)
 
