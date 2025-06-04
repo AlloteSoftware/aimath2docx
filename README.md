@@ -49,4 +49,4 @@ This project is licensed under the Apache License 2.0.
 
 You are free to use, modify, and distribute this software, including for commercial purposes, as long as you retain the copyright:
 
-Copyright 2025 AlloteSoftware
+Copyright 2025 Allote.Software
