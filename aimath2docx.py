@@ -8,6 +8,7 @@ from docx.oxml import parse_xml
 from docx.shared import Pt
 from docx.enum.table import WD_ALIGN_VERTICAL
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml.ns import qn
 import regex
 import csv
 from io import StringIO
@@ -499,19 +500,34 @@ def add_omml_run(paragraph, omml: str):
     paragraph._element.append(run_element)
 
 def process_inline_markdown(paragraph, text):
+    runs = []
     last = 0
-    for m in re.finditer(r'\$(.+?)\$', text):
-        if m.start() > last:
-            add_markdown_runs(paragraph, parse_markdown_styles(text[last:m.start()]))
-        formula = clean_latex(m.group(0))
-        try:
-            omml = latex_to_omml(formula)
-            add_omml_run(paragraph, omml)
-        except Exception as e:
-            paragraph.add_run(f"[Ошибка формулы: {formula} ({type(e).__name__}: {e})]")
+    for m in re.finditer(r'(?<!\\)(\$[^$]+\$|\\\([^)]*\\\)|\\\[[^\]]*\\\])', text):
+        runs.append(("text", text[last:m.start()]))
+        raw = m.group(0)
+        if raw.startswith('$') and raw.endswith('$'):
+            formula = clean_latex(raw[1:-1])
+        elif raw.startswith('\\(') and raw.endswith('\\)'):
+            formula = clean_latex(raw[2:-2])
+        elif raw.startswith('\\[') and raw.endswith('\\]'):
+            formula = clean_latex(raw[2:-2])
+        else:
+            formula = clean_latex(raw)
+        runs.append(("math", formula))
         last = m.end()
-    if last < len(text):
-        add_markdown_runs(paragraph, parse_markdown_styles(text[last:]))
+    runs.append(("text", text[last:]))
+
+    for kind, content in runs:
+        if kind == "math":
+            try:
+                omml = latex_to_omml(content)
+                add_omml_run(paragraph, omml)
+            except Exception as e:
+                paragraph.add_run(f"[Ошибка формулы: {content} ({type(e).__name__}: {e})]")
+        else:
+            parsed = parse_markdown_styles(content)
+            add_markdown_runs(paragraph, parsed)
+
 
 def markdown_to_docx(md_text, output_file):
     doc = Document()
