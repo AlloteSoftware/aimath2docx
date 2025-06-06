@@ -78,8 +78,13 @@ def main():
         
     def browse_input():
         path = filedialog.askopenfilename(
-            filetypes=[("Markdown files", "*.md")],
-            title="Select Markdown file..."
+            filetypes=[
+                ("Markdown or Text files", "*.md *.txt"),
+                ("Markdown files", "*.md"),
+                ("Text files", "*.txt"),
+                ("All files", "*.*"),
+            ],
+            title="Select Markdown or Text file..."
         )
         if path:
             input_path.set(path)
