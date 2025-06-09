@@ -125,7 +125,6 @@ def add_space_number_command(formula):
     return formula
 
 def insert_multiplication_dots_smart(latex: str, enable_log=False) -> str:
-    import re
 
     LATEX_GREEK = [
         'alpha','beta','gamma','delta','epsilon','zeta','eta','theta','vartheta',
@@ -139,7 +138,7 @@ def insert_multiplication_dots_smart(latex: str, enable_log=False) -> str:
         'sinh', 'cosh', 'tanh',
         'log', 'ln', 'exp'
     ]
-    FORBIDDEN_RELATIONS = ['\\leq', '\\geq', '\\neq', '\\approx', '=', '<', '>']
+    FORBIDDEN_RELATIONS = ['\\leq', '\\geq', '\\neq', '\\approx', '=', '<', '>', '\\to']
     FORBIDDEN_QUANTORS = ['\\forall', '\\exists']
     FORBIDDEN_SET_OPERATORS = ['\\in', '\\notin', '\\subset', '\\supset', '\\subseteq', '\\supseteq']
     FORBIDDEN_SETS = ['\\mathbb{R}', '\\mathbb{Z}', '\\mathbb{N}', '\\mathbb{Q}', '\\mathbb{C}']
@@ -211,7 +210,7 @@ def insert_multiplication_dots_smart(latex: str, enable_log=False) -> str:
                     is_number(lhs) and is_greek(rhs) or
                     (is_latin(lhs) and is_greek(rhs)) or (is_greek(lhs) and is_latin(rhs)) or
                     is_greek(lhs) and is_greek(rhs) or
-                    (re.fullmatch(r'\\([a-zA-Z]+)', lhs) and not is_function(lhs) and is_latin(rhs))
+                    (re.fullmatch(r'\\([a-zA-Z]+)', lhs) and not is_function(lhs) and is_latin(rhs) and lhs not in FORBIDDEN_RELATIONS)
                 ):
                     if result and result[-1] == '\\cdot':
                         pass
@@ -502,8 +501,10 @@ def add_omml_run(paragraph, omml: str):
 def process_inline_markdown(paragraph, text):
     runs = []
     last = 0
-    for m in re.finditer(r'(?<!\\)(\$[^$]+\$|\\\([^)]*\\\)|\\\[[^\]]*\\\])', text):
-        runs.append(("text", text[last:m.start()]))
+    pattern = r'(?<!\\)(\$[^$]+\$|\\\((.*?)\\\)|\\\[(.*?)\\\])'
+    for m in re.finditer(pattern, text):
+        if m.start() > last:
+            runs.append(("text", text[last:m.start()]))
         raw = m.group(0)
         if raw.startswith('$') and raw.endswith('$'):
             formula = clean_latex(raw[1:-1])
@@ -515,7 +516,10 @@ def process_inline_markdown(paragraph, text):
             formula = clean_latex(raw)
         runs.append(("math", formula))
         last = m.end()
-    runs.append(("text", text[last:]))
+    if last < len(text):
+        runs.append(("text", text[last:]))
+    elif not runs:
+        runs.append(("text", text))
 
     for kind, content in runs:
         if kind == "math":
@@ -527,6 +531,7 @@ def process_inline_markdown(paragraph, text):
         else:
             parsed = parse_markdown_styles(content)
             add_markdown_runs(paragraph, parsed)
+
 
 
 def markdown_to_docx(md_text, output_file):
@@ -593,7 +598,7 @@ def markdown_to_docx(md_text, output_file):
             level = len(m_header.group(1))
             text = m_header.group(2)
             p = doc.add_paragraph()
-            add_markdown_runs(p, parse_markdown_styles(text))
+            process_inline_markdown(p, text)
             size = Pt(19) if level == 1 else Pt(16) if level == 2 else Pt(14) if level == 3 else Pt(13) if level == 4 else Pt(12) if level == 5 else Pt(11)
             for run in p.runs:
                 run.bold = True
