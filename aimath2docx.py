@@ -8,6 +8,7 @@ from docx.oxml import parse_xml
 from docx.shared import Pt
 from docx.enum.table import WD_ALIGN_VERTICAL
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from docx.oxml.ns import qn
 import regex
 import csv
@@ -366,6 +367,13 @@ def latex_to_omml(latex: str) -> str:
         #def logstep(title, content):
             #log.write(f"--- {title} ---\n{content}\n\n")
 
+        # Вырезаем \tag{...} из конца формулы
+        tag_text = None
+        m = re.search(r'\\tag\{([^{}]+)\}\s*$', latex)
+        if m:
+            tag_text = m.group(1).strip()
+            latex = latex[:m.start()].rstrip()
+
         latex = auto_bracket_dot_power(latex)
         #logstep("01 auto_bracket_dot_power", latex)
 
@@ -402,8 +410,14 @@ def latex_to_omml(latex: str) -> str:
         latex_fixed = re.sub(r'\\+,', r'\\THINSPACE ', latex_fixed)
         #logstep("12 before mathml convert", latex_fixed)
 
+
+        # Защита \tag
+        latex_fixed = re.sub(r'\\tag\{([^{}]+)\}', r'\\TAGSTART\1\\TAGEND', latex_fixed)
+
         mathml = latex2mathml.converter.convert(latex_fixed)
-        #logstep("13 mathml", mathml)
+
+        # Восстановление \tag
+        mathml = mathml.replace(r'\TAGSTART', r'\tag{').replace(r'\TAGEND', r'}')
 
         mathml = mathml.replace(r'<mi>\THINSPACE</mi>', r'<mspace width="1.0em"/>')
         mathml = mathml.replace(r'<mo>\THINSPACE</mo>', r'<mspace width="1.0em"/>')
@@ -411,8 +425,7 @@ def latex_to_omml(latex: str) -> str:
         omml = mathml2omml.convert(mathml, html.entities.name2codepoint)
         #logstep("14 omml", omml)
 
-        return omml
-
+        return omml, tag_text
 
 def parse_markdown_styles(text):
     markers = [
@@ -524,8 +537,14 @@ def process_inline_markdown(paragraph, text):
     for kind, content in runs:
         if kind == "math":
             try:
-                omml = latex_to_omml(content)
+                omml, tag = latex_to_omml(content)
                 add_omml_run(paragraph, omml)
+                if tag:
+                    run = paragraph.add_run()
+                    run.add_tab()
+                    run.add_text(f"({tag})")
+                    paragraph.paragraph_format.tab_stops.add_tab_stop(Pt(468))  # Пример: 6.5" = 468pt
+
             except Exception as e:
                 paragraph.add_run(f"[Ошибка формулы: {content} ({type(e).__name__}: {e})]")
         else:
@@ -535,6 +554,7 @@ def process_inline_markdown(paragraph, text):
 
 
 def markdown_to_docx(md_text, output_file):
+    TAB_POS = 300  # ← Константа табуляции (3 дюйма от левого края)
     doc = Document()
     lines = md_text.split('\n')
     i = 0
@@ -552,20 +572,68 @@ def markdown_to_docx(md_text, output_file):
             formula = clean_latex('\n'.join(formula_lines))
             p_formula = doc.add_paragraph()
             try:
-                omml = latex_to_omml(formula)
+                omml, tag = latex_to_omml(formula)
                 add_omml_run(p_formula, omml)
+                if tag:
+                    run = p_formula.add_run()
+                    run.add_tab()
+                    run.add_text(f"({tag})")
+                    p_formula.paragraph_format.alignment = WD_PARAGRAPH_ALIGNMENT.RIGHT
+                    p_formula.paragraph_format.tab_stops.add_tab_stop(Pt(TAB_POS))
             except Exception as e:
                 p_formula.add_run(f"[Ошибка формулы: {formula} ({type(e).__name__}: {e})]")
             continue
         
+        if lines[i].strip().startswith(r'\['):
+            formula_lines = []
+            # Удалить начальный \[
+            line = lines[i].lstrip()
+            if line.startswith(r'\['):
+                line = line[2:]
+            if line.rstrip().endswith(r'\]'):
+                line = re.sub(r'\\\]$', '', line.rstrip())
+                formula_lines.append(line)
+            else:
+                formula_lines.append(line)
+                i += 1
+                while i < len(lines):
+                    line = lines[i].rstrip()
+                    if line.endswith(r'\]'):
+                        formula_lines.append(line[:-2])
+                        break
+                    formula_lines.append(line)
+                    i += 1
+            formula = clean_latex('\n'.join(formula_lines))
+            p_formula = doc.add_paragraph()
+            try:
+                omml, tag = latex_to_omml(formula)
+                add_omml_run(p_formula, omml)
+                if tag:
+                    run = p_formula.add_run()
+                    run.add_tab()
+                    run.add_text(f"({tag})")
+                    p_formula.paragraph_format.alignment = WD_PARAGRAPH_ALIGNMENT.RIGHT
+                    p_formula.paragraph_format.tab_stops.add_tab_stop(Pt(TAB_POS))
+            except Exception as e:
+                p_formula.add_run(f"[Ошибка формулы: {formula} ({type(e).__name__}: {e})]")
+            i += 1
+            continue
+
+
         line = lines[i].rstrip()
         if line.strip().startswith('$$'):
             if line.strip().endswith('$$') and len(line.strip()) > 4:
                 formula = clean_latex(line)
                 p_formula = doc.add_paragraph()
                 try:
-                    omml = latex_to_omml(formula)
+                    omml, tag = latex_to_omml(formula)
                     add_omml_run(p_formula, omml)
+                    if tag:
+                        run = p_formula.add_run()
+                        run.add_tab()
+                        run.add_text(f"({tag})")
+                        p_formula.paragraph_format.alignment = WD_PARAGRAPH_ALIGNMENT.RIGHT
+                        p_formula.paragraph_format.tab_stops.add_tab_stop(Pt(TAB_POS))
                 except Exception as e:
                     p_formula.add_run(f"[Ошибка формулы: {formula} ({type(e).__name__}: {e})]")
                 i += 1
@@ -582,8 +650,14 @@ def markdown_to_docx(md_text, output_file):
             formula = clean_latex(formula_block)
             p_formula = doc.add_paragraph()
             try:
-                omml = latex_to_omml(formula)
+                omml, tag = latex_to_omml(formula)
                 add_omml_run(p_formula, omml)
+                if tag:
+                    run = p_formula.add_run()
+                    run.add_tab()
+                    run.add_text(f"({tag})")
+                    p_formula.paragraph_format.alignment = WD_PARAGRAPH_ALIGNMENT.RIGHT
+                    p_formula.paragraph_format.tab_stops.add_tab_stop(Pt(TAB_POS))
             except Exception as e:
                 p_formula.add_run(f"[Ошибка формулы: {formula} ({type(e).__name__}: {e})]")
             continue
