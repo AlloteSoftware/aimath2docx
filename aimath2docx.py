@@ -5,6 +5,8 @@ import latex2mathml.converter
 import mathml2omml # type: ignore
 from docx import Document
 from docx.oxml import parse_xml
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
 from docx.shared import Pt
 from docx.enum.table import WD_ALIGN_VERTICAL
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -39,6 +41,21 @@ def restore_bra_ket(latex, braket_dict):
     for key, value in braket_dict.items():
         latex = latex.replace(key, value)
     return latex
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+
+def add_horizontal_line(paragraph):
+    p = paragraph._p
+    pPr = p.get_or_add_pPr()
+    pBdr = OxmlElement('w:pBdr')
+    bottom = OxmlElement('w:bottom')
+    bottom.set(qn('w:val'), 'single')
+    bottom.set(qn('w:sz'), '6')
+    bottom.set(qn('w:space'), '1')
+    bottom.set(qn('w:color'), 'auto')
+    pBdr.append(bottom)
+    pPr.append(pBdr)
+
 
 def fix_integral_indices(latex: str) -> str:
     latex = re.sub(r'(\\(?:int|oint|iint|iiint|idotsint))\\limits', r'\1', latex)
@@ -552,7 +569,6 @@ def process_inline_markdown(paragraph, text):
             add_markdown_runs(paragraph, parsed)
 
 
-
 def markdown_to_docx(md_text, output_file):
     TAB_POS = 300  # ← Константа табуляции (3 дюйма от левого края)
     doc = Document()
@@ -621,6 +637,11 @@ def markdown_to_docx(md_text, output_file):
 
 
         line = lines[i].rstrip()
+        if line.strip() == "---":
+            p = doc.add_paragraph()
+            add_horizontal_line(p)
+            i += 1
+            continue
         if line.strip().startswith('$$'):
             if line.strip().endswith('$$') and len(line.strip()) > 4:
                 formula = clean_latex(line)
