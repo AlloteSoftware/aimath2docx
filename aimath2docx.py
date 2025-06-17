@@ -15,6 +15,7 @@ from docx.oxml.ns import qn
 import regex
 import csv
 from io import StringIO
+import xml.etree.ElementTree as ET
 
 def convert_file(input_path, output_path):
     try:
@@ -25,6 +26,34 @@ def convert_file(input_path, output_path):
     except Exception:
         return False
 
+def remove_redundant_boxes(omml_str):
+    try:
+        ns = {'m': 'http://schemas.openxmlformats.org/officeDocument/2006/math'}
+        root = ET.fromstring(omml_str)
+
+        def process(parent):
+            for i, child in enumerate(list(parent)):
+                process(child)
+                if child.tag == '{http://schemas.openxmlformats.org/officeDocument/2006/math}box':
+                    elems = list(child)
+                    if len(elems) == 1 and elems[0].tag.endswith('e'):
+                        parent.remove(child)
+                        parent.insert(i, elems[0])
+
+        # Обрабатываем root сам по себе
+        if root.tag == '{http://schemas.openxmlformats.org/officeDocument/2006/math}oMath':
+            children = list(root)
+            if len(children) == 1 and children[0].tag == '{http://schemas.openxmlformats.org/officeDocument/2006/math}box':
+                box = children[0]
+                elems = list(box)
+                if len(elems) == 1 and elems[0].tag.endswith('e'):
+                    root.clear()
+                    root.append(elems[0])
+
+        process(root)
+        return ET.tostring(root, encoding="unicode")
+    except Exception:
+        return omml_str
 
 def protect_bra_ket(latex):
     # Заменяет все конструкции |...⟩ (например, |0\rangle) на уникальные токены
@@ -436,10 +465,19 @@ def latex_to_omml(latex: str) -> str:
         # Восстановление \tag
         mathml = mathml.replace(r'\TAGSTART', r'\tag{').replace(r'\TAGEND', r'}')
 
+        with open("debug_mathml.xml", "a", encoding="utf-8") as f:
+            f.write("--- MathML ---\n")
+            f.write(latex + "\n")
+            f.write(mathml + "\n\n")
         mathml = mathml.replace(r'<mi>\THINSPACE</mi>', r'<mspace width="1.0em"/>')
         mathml = mathml.replace(r'<mo>\THINSPACE</mo>', r'<mspace width="1.0em"/>')
 
         omml = mathml2omml.convert(mathml, html.entities.name2codepoint)
+        omml = remove_redundant_boxes(omml)
+        with open("debug_omml.xml", "a", encoding="utf-8") as f:
+            f.write("--- OMML ---\n")
+            f.write(latex + "\n")
+            f.write(omml + "\n\n")
         #logstep("14 omml", omml)
 
         return omml, tag_text
