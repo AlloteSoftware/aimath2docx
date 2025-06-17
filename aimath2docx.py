@@ -33,15 +33,6 @@ def remove_redundant_boxes(omml_str):
         root = ET.fromstring(wrapped_omml)
         m_ns = "{http://schemas.openxmlformats.org/officeDocument/2006/math}"
 
-        # Лог структуры
-        with open("debug_box_structure.txt", "a", encoding="utf-8") as dbg:
-            dbg.write("--- DEBUG STRUCTURE ---\n")
-            for i, child in enumerate(list(root)):
-                dbg.write(f"  Top-level {i} tag: {child.tag}\n")
-                for j, sub in enumerate(list(child)):
-                    dbg.write(f"    Sub {j} tag: {sub.tag}\n")
-            dbg.write("\n")
-
         # Упрощаем <m:oMath><m:box><m:e>...</m:e></m:box></m:oMath>
         for math in root.findall(f".//{m_ns}oMath"):
             children = list(math)
@@ -73,8 +64,7 @@ def remove_redundant_boxes(omml_str):
         inner = "".join(ET.tostring(e, encoding="unicode") for e in root)
         return inner
     except Exception as e:
-        with open("debug_box_structure.txt", "a", encoding="utf-8") as dbg:
-            dbg.write(f"[ERROR]: {type(e).__name__}: {str(e)}\n\n")
+        print(f"[remove_redundant_boxes ERROR]: {type(e).__name__}: {e}")
         return omml_str
     
 def protect_bra_ket(latex):
@@ -147,8 +137,6 @@ def fix_integral_indices(latex: str) -> str:
     )
 
     return latex
-
-
 
 def fix_sum_indices(latex: str) -> str:
     # Ищет \sum, после которого есть нижний индекс (_{...} или _a), но нет ^{...} или ^a сразу после
@@ -490,15 +478,7 @@ def latex_to_omml(latex: str) -> str:
         mathml = mathml.replace(r'<mo>\THINSPACE</mo>', r'<mspace width="1.0em"/>')
 
         omml = mathml2omml.convert(mathml, html.entities.name2codepoint)
-        with open("debug_omml_before_box_cleanup.xml", "a", encoding="utf-8") as f:
-            f.write("--- OMML до remove_redundant_boxes ---\n")
-            f.write(latex + "\n")
-            f.write(omml + "\n\n")
         omml = remove_redundant_boxes(omml)
-        with open("debug_omml_after_box_cleanup.xml", "a", encoding="utf-8") as f:
-            f.write("--- OMML после remove_redundant_boxes ---\n")
-            f.write(latex + "\n")
-            f.write(omml + "\n\n")
         #logstep("14 omml", omml)
 
         return omml, tag_text
