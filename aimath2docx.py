@@ -28,33 +28,55 @@ def convert_file(input_path, output_path):
 
 def remove_redundant_boxes(omml_str):
     try:
-        ns = {'m': 'http://schemas.openxmlformats.org/officeDocument/2006/math'}
-        root = ET.fromstring(omml_str)
+        # Обернуть в корневой тег с объявлением пространства имён
+        wrapped_omml = f'<wrapper xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math">{omml_str}</wrapper>'
+        root = ET.fromstring(wrapped_omml)
+        m_ns = "{http://schemas.openxmlformats.org/officeDocument/2006/math}"
 
-        def process(parent):
-            for i, child in enumerate(list(parent)):
-                process(child)
-                if child.tag == '{http://schemas.openxmlformats.org/officeDocument/2006/math}box':
-                    elems = list(child)
-                    if len(elems) == 1 and elems[0].tag.endswith('e'):
-                        parent.remove(child)
-                        parent.insert(i, elems[0])
+        # Лог структуры
+        with open("debug_box_structure.txt", "a", encoding="utf-8") as dbg:
+            dbg.write("--- DEBUG STRUCTURE ---\n")
+            for i, child in enumerate(list(root)):
+                dbg.write(f"  Top-level {i} tag: {child.tag}\n")
+                for j, sub in enumerate(list(child)):
+                    dbg.write(f"    Sub {j} tag: {sub.tag}\n")
+            dbg.write("\n")
 
-        # Обрабатываем root сам по себе
-        if root.tag == '{http://schemas.openxmlformats.org/officeDocument/2006/math}oMath':
-            children = list(root)
-            if len(children) == 1 and children[0].tag == '{http://schemas.openxmlformats.org/officeDocument/2006/math}box':
+        # Упрощаем <m:oMath><m:box><m:e>...</m:e></m:box></m:oMath>
+        for math in root.findall(f".//{m_ns}oMath"):
+            children = list(math)
+            if len(children) == 1 and children[0].tag == f"{m_ns}box":
                 box = children[0]
                 elems = list(box)
-                if len(elems) == 1 and elems[0].tag.endswith('e'):
-                    root.clear()
-                    root.append(elems[0])
+                if len(elems) == 1 and elems[0].tag == f"{m_ns}e":
+                    e_children = list(elems[0])
+                    math.clear()
+                    for ec in e_children:
+                        math.append(ec)
 
-        process(root)
-        return ET.tostring(root, encoding="unicode")
-    except Exception:
+        # Рекурсивно разворачиваем все box → e → *
+        def recursive_unwrap(parent):
+            for i, child in enumerate(list(parent)):
+                recursive_unwrap(child)
+                if child.tag == f"{m_ns}box":
+                    elems = list(child)
+                    if len(elems) == 1 and elems[0].tag == f"{m_ns}e":
+                        e = elems[0]
+                        e_children = list(e)
+                        parent.remove(child)
+                        for j, ec in enumerate(e_children):
+                            parent.insert(i + j, ec)
+
+        recursive_unwrap(root)
+
+        # Возврат только внутреннего содержимого (без <wrapper>)
+        inner = "".join(ET.tostring(e, encoding="unicode") for e in root)
+        return inner
+    except Exception as e:
+        with open("debug_box_structure.txt", "a", encoding="utf-8") as dbg:
+            dbg.write(f"[ERROR]: {type(e).__name__}: {str(e)}\n\n")
         return omml_str
-
+    
 def protect_bra_ket(latex):
     # Заменяет все конструкции |...⟩ (например, |0\rangle) на уникальные токены
     pattern = r'(\|[^\|{}\\]+\s*\\rangle)'
@@ -461,7 +483,6 @@ def latex_to_omml(latex: str) -> str:
         latex_fixed = re.sub(r'\\tag\{([^{}]+)\}', r'\\TAGSTART\1\\TAGEND', latex_fixed)
 
         mathml = latex2mathml.converter.convert(latex_fixed)
-
         # Восстановление \tag
         mathml = mathml.replace(r'\TAGSTART', r'\tag{').replace(r'\TAGEND', r'}')
 
@@ -469,7 +490,15 @@ def latex_to_omml(latex: str) -> str:
         mathml = mathml.replace(r'<mo>\THINSPACE</mo>', r'<mspace width="1.0em"/>')
 
         omml = mathml2omml.convert(mathml, html.entities.name2codepoint)
+        with open("debug_omml_before_box_cleanup.xml", "a", encoding="utf-8") as f:
+            f.write("--- OMML до remove_redundant_boxes ---\n")
+            f.write(latex + "\n")
+            f.write(omml + "\n\n")
         omml = remove_redundant_boxes(omml)
+        with open("debug_omml_after_box_cleanup.xml", "a", encoding="utf-8") as f:
+            f.write("--- OMML после remove_redundant_boxes ---\n")
+            f.write(latex + "\n")
+            f.write(omml + "\n\n")
         #logstep("14 omml", omml)
 
         return omml, tag_text
