@@ -433,6 +433,8 @@ def latex_to_omml(latex: str) -> str:
         latex = auto_bracket_dot_power(latex)
         #logstep("01 auto_bracket_dot_power", latex)
 
+        latex = re.sub(r'\\\\\[\s*\d*\.?\d+\s*(pt|ex|em|cm|mm|in|pc|bp)\s*\]', r'\\\\', latex)
+
         latex_fixed = re.sub(r'\\vec\{([^}]+)\}', r'\\overset{\\rightarrow}{\1}', latex)
         #logstep("02 replace vec", latex_fixed)
 
