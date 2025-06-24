@@ -195,7 +195,11 @@ def insert_multiplication_dots_smart(latex: str, enable_log=False) -> str:
         'sinh', 'cosh', 'tanh',
         'log', 'ln', 'exp'
     ]
-    FORBIDDEN_RELATIONS = ['\\leq', '\\geq', '\\neq', '\\approx', '=', '<', '>', '\\to']
+    FORBIDDEN_RELATIONS = [
+    '\\leq', '\\geq', '\\neq', '\\approx', '=', '<', '>', '\\to',
+    '\\equiv', '\\sim', '\\simeq', '\\cong', '\\doteq',
+    '\\propto', '\\asymp', '\\mapsto'
+    ]
     FORBIDDEN_QUANTORS = ['\\forall', '\\exists']
     FORBIDDEN_SET_OPERATORS = ['\\in', '\\notin', '\\subset', '\\supset', '\\subseteq', '\\supseteq']
     FORBIDDEN_SETS = ['\\mathbb{R}', '\\mathbb{Z}', '\\mathbb{N}', '\\mathbb{Q}', '\\mathbb{C}']
@@ -205,6 +209,12 @@ def insert_multiplication_dots_smart(latex: str, enable_log=False) -> str:
     '\\bigcap', '\\bigcup', '\\bigvee', '\\bigwedge', '\\bigodot',
     '\\bigotimes', '\\bigoplus', '\\biguplus'
     ]
+    STYLE_COMMANDS = [
+        'mathrm', 'mathit', 'mathbf', 'mathsf', 'mathtt',
+        'mathcal', 'mathfrak', 'mathbb', 'mathscr', 'mathnormal'
+    ]
+    for cmd in STYLE_COMMANDS:
+        latex = re.sub(rf'\\{cmd}\s*([a-zA-Z])', rf'__{cmd.upper()}_\1__', latex)
 
     def is_greek(token):
         return re.fullmatch(r'\\(' + '|'.join(LATEX_GREEK) + r')', token)
@@ -281,6 +291,8 @@ def insert_multiplication_dots_smart(latex: str, enable_log=False) -> str:
             i += 1
 
     latex = ' '.join(result)
+    for cmd in STYLE_COMMANDS:
+        latex = re.sub(rf'__{cmd.upper()}_([a-zA-Z])__', rf'\\{cmd} \1', latex)
     return latex.strip()
 
 
